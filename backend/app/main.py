@@ -106,7 +106,7 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# Configure CORS for React Dev Server
+# Configure CORS for Local Development and Vercel/Production Deployments
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -114,7 +114,7 @@ app.add_middleware(
         "http://localhost:5174", "http://127.0.0.1:5174",
         "http://localhost:3000", "http://127.0.0.1:3000",
     ],
-    allow_origin_regex=r"http://(localhost|127\.0\.0\.1)(:\d+)?",
+    allow_origin_regex=r"https?://(localhost|127\.0\.0\.1|.*\.vercel\.app|.*\.onrender\.com)(:\d+)?",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

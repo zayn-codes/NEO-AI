@@ -36,8 +36,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [token, setToken] = useState<string | null>(null);
   const [theme, setTheme] = useState<ThemeMode>('light');
   
-  // Base URL of the FastAPI Backend
-  const apiBaseUrl = "http://localhost:8000";
+  // Base URL of the FastAPI Backend (Supports Vercel/Production deployment via VITE_API_URL)
+  const apiBaseUrl = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
   const applyThemeClass = (targetTheme: ThemeMode) => {
     document.documentElement.classList.remove('light', 'dark', 'cyber');
