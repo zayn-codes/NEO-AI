@@ -131,14 +131,34 @@ async def call_gemini_with_key_failover(
     until the generation request is completely fulfilled and achieved.
     """
     if models is None:
-        # Verified, high-speed, active Google Gemini models
-        models = [
-            "gemini-2.0-flash",
-            "gemini-1.5-flash",
-            "gemini-1.5-flash-8b",
-            "gemini-1.5-pro",
-            "gemini-2.0-flash-lite-preview-02-05"
+        # Check cache locations for optimized verified model list
+        priority_paths = [
+            os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "cache", "optimized_model_priority.json"),
+            os.path.join(os.path.dirname(os.path.abspath(__file__)), "cache", "optimized_model_priority.json")
         ]
+        for p_path in priority_paths:
+            if os.path.exists(p_path):
+                try:
+                    with open(p_path, "r", encoding="utf-8") as f:
+                        cache_data = json.load(f)
+                        cached_models = cache_data.get("module_generation_priority", [])
+                        if cached_models:
+                            models = cached_models
+                            break
+                except Exception as e:
+                    print(f"[KEY MANAGER WARN] Could not read model priority cache: {e}")
+
+        if not models:
+            # Verified active Google Gemini models ranked by latency
+            models = [
+                "gemini-flash-lite-latest",
+                "gemini-3.5-flash-lite",
+                "gemini-robotics-er-1.6-preview",
+                "gemma-4-26b-a4b-it",
+                "gemini-3-flash-preview",
+                "gemini-3.1-flash-lite-preview",
+                "gemini-3.1-flash-lite"
+            ]
 
     api_keys = key_manager.get_keys(
         for_module_gen=for_module_gen,
