@@ -1,0 +1,55 @@
+{
+  "name": "NeoAI - AI-Powered Literacy Assistant",
+  "short_name": "NeoAI",
+  "description": "Personalized AI-Powered Literacy Assistant for Neo Learners",
+  "start_url": "/",
+  "id": "/",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
+  "background_color": "#0b0f19",
+  "theme_color": "#0f172a",
+  "orientation": "any",
+  "scope": "/",
+  "categories": ["education", "productivity", "utilities"],
+  "icons": [
+    {
+      "src": "/pwa-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/pwa-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/maskable-icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Learning Path",
+      "short_name": "Roadmap",
+      "description": "Open your personalized curriculum roadmap",
+      "url": "/?view=roadmap",
+      "icons": [{ "src": "/pwa-192x192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Study Guide",
+      "short_name": "Guide",
+      "description": "Open progressive study guide chapters",
+      "url": "/?view=study-guide",
+      "icons": [{ "src": "/pwa-192x192.png", "sizes": "192x192" }]
+    }
+  ]
+}

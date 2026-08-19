@@ -1,0 +1,317 @@
+@import url('https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+@import "tailwindcss";
+
+:root {
+  --font-sans: 'Google Sans', 'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+
+  /* Google AI Studio Light Theme Tokens */
+  --studio-bg: #F6F8FC;
+  --studio-bg-gradient: radial-gradient(circle at 15% 15%, #EBF3FE 0%, transparent 45%),
+                        radial-gradient(circle at 85% 75%, #F4EEFF 0%, transparent 50%),
+                        linear-gradient(135deg, #F6F8FC 0%, #E8F0FE 40%, #F3E8FF 75%, #F6F8FC 100%);
+  --studio-surface: rgba(255, 255, 255, 0.85);
+  --studio-card: rgba(241, 243, 244, 0.8);
+  --studio-card-hover: rgba(232, 234, 237, 0.95);
+  --studio-border: #E0E2E0;
+  --studio-border-subtle: #F1F3F4;
+  --studio-text-primary: #1F1F1F;
+  --studio-text-secondary: #5F6368;
+  --studio-text-muted: #80868B;
+  
+  --studio-blue: #0B57D0;
+  --studio-blue-light: #D3E3FD;
+  --studio-purple: #65558F;
+  --studio-teal: #006A60;
+  --studio-cyan: #00639B;
+
+  /* Compatibility Mapping */
+  --color-cal-black: #1F1F1F;
+  --color-cal-dark: #1F1F1F;
+  --color-cal-gray-hover: #E8EAED;
+  --color-cal-border: #E0E2E0;
+  --color-cal-text-muted: #5F6368;
+  --color-cal-bg: #F6F8FC;
+  --color-cal-card-bg: #FFFFFF;
+  --color-cal-text: #1F1F1F;
+  --color-cal-btn-bg: #0B57D0;
+  --color-cal-btn-text: #FFFFFF;
+  --color-cal-btn-border: #0B57D0;
+  --color-cal-btn-hover: #0842A0;
+}
+
+.dark {
+  /* Google AI Studio Dark Theme Tokens (Default AI Studio Aesthetic) */
+  --studio-bg: #090A0F;
+  --studio-bg-gradient: radial-gradient(circle at 20% 20%, rgba(16, 37, 66, 0.6) 0%, transparent 50%),
+                        radial-gradient(circle at 80% 80%, rgba(30, 16, 47, 0.5) 0%, transparent 50%),
+                        linear-gradient(135deg, #090A0F 0%, #0F1629 45%, #1A102F 80%, #090A0F 100%);
+  --studio-surface: rgba(30, 31, 32, 0.85);
+  --studio-card: rgba(40, 41, 42, 0.8);
+  --studio-card-hover: rgba(51, 53, 55, 0.95);
+  --studio-border: #37393B;
+  --studio-border-subtle: #2A2B2D;
+  --studio-text-primary: #E3E2E6;
+  --studio-text-secondary: #9AA0A6;
+  --studio-text-muted: #747775;
+  
+  --studio-blue: #A8C7FA;
+  --studio-blue-light: #004A77;
+  --studio-purple: #D0BCFF;
+  --studio-teal: #79D7BE;
+  --studio-cyan: #7FCFFF;
+
+  /* Compatibility Mapping */
+  --color-cal-black: #E3E2E6;
+  --color-cal-dark: #E3E2E6;
+  --color-cal-gray-hover: #333537;
+  --color-cal-border: #37393B;
+  --color-cal-text-muted: #9AA0A6;
+  --color-cal-bg: #090A0F;
+  --color-cal-card-bg: #1E1F20;
+  --color-cal-text: #E3E2E6;
+  --color-cal-btn-bg: #A8C7FA;
+  --color-cal-btn-text: #040E25;
+  --color-cal-btn-border: #A8C7FA;
+  --color-cal-btn-hover: #D3E3FD;
+}
+
+.cyber {
+  /* Cyber Virtual Neon Theme Tokens */
+  --studio-bg: #030712;
+  --studio-bg-gradient: radial-gradient(circle at 15% 15%, rgba(6, 182, 212, 0.45) 0%, transparent 45%),
+                        radial-gradient(circle at 85% 85%, rgba(236, 72, 153, 0.45) 0%, transparent 45%),
+                        linear-gradient(135deg, #030712 0%, #081028 40%, #17082e 80%, #030712 100%);
+  --studio-surface: rgba(15, 23, 42, 0.92);
+  --studio-card: rgba(30, 41, 59, 0.88);
+  --studio-card-hover: rgba(51, 65, 85, 0.95);
+  --studio-border: #06b6d4;
+  --studio-border-subtle: #3b82f6;
+  --studio-text-primary: #f8fafc;
+  --studio-text-secondary: #38bdf8;
+  --studio-text-muted: #94a3b8;
+  
+  --studio-blue: #22d3ee;
+  --studio-blue-light: #0891b2;
+  --studio-purple: #f472b6;
+  --studio-teal: #34d399;
+  --studio-cyan: #38bdf8;
+
+  /* Compatibility Mapping */
+  --color-cal-black: #f8fafc;
+  --color-cal-dark: #f8fafc;
+  --color-cal-gray-hover: #1e293b;
+  --color-cal-border: #06b6d4;
+  --color-cal-text-muted: #38bdf8;
+  --color-cal-bg: #030712;
+  --color-cal-card-bg: #0f172a;
+  --color-cal-text: #f8fafc;
+  --color-cal-btn-bg: #06b6d4;
+  --color-cal-btn-text: #030712;
+  --color-cal-btn-border: #22d3ee;
+  --color-cal-btn-hover: #67e8f9;
+}
+
+
+html {
+  font-size: 16px;
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: var(--font-sans);
+  color: var(--studio-text-primary);
+  background: var(--studio-bg-gradient) fixed;
+  background-size: cover;
+  background-attachment: fixed;
+  margin: 0;
+  padding: 0;
+  transition: background 0.3s ease, color 0.3s ease;
+  overflow-x: hidden;
+  min-height: 100vh;
+}
+
+/* Ensure background variable utility class applies the theme gradient */
+[class*="bg-[var(--studio-bg)]"] {
+  background: var(--studio-bg-gradient) fixed !important;
+  background-size: cover !important;
+  background-attachment: fixed !important;
+}
+
+/* Custom Scrollbar for Studio Workbench */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--studio-border);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--studio-text-muted);
+}
+
+/* Google Gemini Sparkle Gradient text */
+.gemini-text-gradient {
+  background: linear-gradient(135deg, #1A73E8 0%, #A142F4 50%, #24C1E0 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.dark .gemini-text-gradient {
+  background: linear-gradient(135deg, #A8C7FA 0%, #D0BCFF 50%, #7FCFFF 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Button & Utility Classes */
+.btn-cal-primary, .studio-btn-primary {
+  background: linear-gradient(135deg, #1A73E8 0%, #4285F4 100%);
+  color: #ffffff;
+  font-weight: 500;
+  border-radius: 0.5rem;
+  padding: 0.5rem 1rem;
+  transition: all 0.15s ease-in-out;
+  cursor: pointer;
+  border: 1px solid transparent;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.dark .btn-cal-primary, .dark .studio-btn-primary {
+  background: linear-gradient(135deg, #A8C7FA 0%, #7FCFFF 100%);
+  color: #040E25;
+  border: 1px solid transparent;
+}
+
+.btn-cal-primary:hover:not(:disabled), .studio-btn-primary:hover:not(:disabled) {
+  opacity: 0.92;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(66, 133, 244, 0.25);
+}
+
+.btn-cal-secondary, .studio-btn-secondary {
+  background-color: var(--studio-card);
+  color: var(--studio-text-primary);
+  font-weight: 500;
+  border: 1px solid var(--studio-border);
+  border-radius: 0.5rem;
+  padding: 0.5rem 1rem;
+  transition: all 0.15s ease-in-out;
+  cursor: pointer;
+}
+.btn-cal-secondary:hover:not(:disabled), .studio-btn-secondary:hover:not(:disabled) {
+  background-color: var(--studio-card-hover);
+  border-color: var(--studio-text-secondary);
+}
+
+.card-cal, .studio-card {
+  background-color: var(--studio-surface);
+  border: 1px solid var(--studio-border);
+  border-radius: 0.75rem;
+  transition: all 0.15s ease-in-out;
+}
+.card-cal:hover, .studio-card:hover {
+  border-color: var(--studio-text-secondary);
+}
+
+.input-cal, .studio-input {
+  background-color: var(--studio-card);
+  border: 1px solid var(--studio-border);
+  border-radius: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  color: var(--studio-text-primary);
+  font-weight: 400;
+  transition: all 0.15s ease-in-out;
+}
+.input-cal:focus, .studio-input:focus {
+  border-color: var(--studio-blue);
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(168, 199, 250, 0.2);
+}
+
+/* Range Parameter Slider for Model Controls */
+input[type="range"].studio-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 4px;
+  background: var(--studio-border);
+  border-radius: 2px;
+  outline: none;
+}
+input[type="range"].studio-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--studio-blue);
+  cursor: pointer;
+  transition: transform 0.1s ease;
+}
+input[type="range"].studio-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+}
+
+/* Code & Markdown View */
+.studio-code-block {
+  font-family: var(--font-mono);
+  background-color: var(--studio-bg);
+  border: 1px solid var(--studio-border);
+  border-radius: 0.5rem;
+  padding: 1rem;
+  color: var(--studio-text-primary);
+}
+
+/* Gemini Floating Sparkle animation */
+@keyframes gemini-pulse {
+  0%, 100% {
+    opacity: 0.8;
+    transform: scale(1);
+    filter: drop-shadow(0 0 8px rgba(168, 199, 250, 0.4));
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.08);
+    filter: drop-shadow(0 0 16px rgba(208, 188, 255, 0.7));
+  }
+}
+.animate-gemini-sparkle {
+  animation: gemini-pulse 3s infinite ease-in-out;
+}
+
+/* Floating Blob Keyframes */
+@keyframes float-blob {
+  0%, 100% {
+    transform: translate(0px, 0px) scale(1);
+  }
+  33% {
+    transform: translate(30px, -40px) scale(1.1);
+  }
+  66% {
+    transform: translate(-20px, 20px) scale(0.95);
+  }
+}
+.animate-blob {
+  animation: float-blob 14s infinite ease-in-out;
+}
+
+/* Voice Assistant animations */
+@keyframes mic-pulse {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(234, 67, 53, 0.4);
+  }
+  50% {
+    transform: scale(1.08);
+    box-shadow: 0 0 0 10px rgba(234, 67, 53, 0);
+  }
+}
+.animate-mic-pulse {
+  animation: mic-pulse 1.5s infinite ease-in-out;
+}
