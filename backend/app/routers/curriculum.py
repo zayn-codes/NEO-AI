@@ -217,7 +217,7 @@ async def generate_curriculum_outline(target_lang: str, native_lang: str, db: as
             await db.execute(
                 """
                 INSERT INTO lesson_content (lesson_id, language_code, translated_title, body_text, exercise_data)
-                VALUES ($1, $2, $3, '', NULL);
+                VALUES ($1, $2, $3, '', '[]'::jsonb);
                 """,
                 lesson_id,
                 native_lang,

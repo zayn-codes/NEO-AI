@@ -54,7 +54,7 @@ async def lifespan(app: FastAPI):
                 language_code VARCHAR(50) NOT NULL,
                 translated_title VARCHAR(255) NOT NULL,
                 body_text TEXT NOT NULL,
-                exercise_data JSONB NOT NULL
+                exercise_data JSONB DEFAULT '[]'::jsonb
             );
 
             -- 5. Assessments Table
@@ -181,6 +181,8 @@ async def lifespan(app: FastAPI):
             ALTER TABLE curriculum ADD COLUMN IF NOT EXISTS user_id INT NULL;
             ALTER TABLE curriculum ADD COLUMN IF NOT EXISTS target_language VARCHAR(50) DEFAULT 'en';
             ALTER TABLE curriculum ADD COLUMN IF NOT EXISTS native_language VARCHAR(50) DEFAULT 'en';
+            ALTER TABLE lesson_content ALTER COLUMN exercise_data DROP NOT NULL;
+            ALTER TABLE lesson_content ALTER COLUMN exercise_data SET DEFAULT '[]'::jsonb;
         """)
         print("[INFO] Verified/Created all 16 platform database tables.")
 
