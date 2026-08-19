@@ -39,6 +39,52 @@ class CurriculumResponse(BaseModel):
     sequence_order: int
     lessons: List[LessonResponse] = []
 
+def _parse_flexible_json_array(raw: str) -> List[Dict[str, Any]]:
+    clean_json = raw.strip()
+    if "```json" in clean_json:
+        clean_json = clean_json.split("```json")[1].split("```")[0].strip()
+    elif "```" in clean_json:
+        clean_json = clean_json.split("```")[1].split("```")[0].strip()
+
+    # Try direct parse
+    try:
+        parsed = json.loads(clean_json)
+        if isinstance(parsed, list) and len(parsed) > 0:
+            return parsed
+        if isinstance(parsed, dict):
+            for k in ["modules", "lessons", "data", "items", "results"]:
+                if k in parsed and isinstance(parsed[k], list) and len(parsed[k]) > 0:
+                    return parsed[k]
+    except Exception:
+        pass
+
+    # Try extracting array brackets
+    start_idx = clean_json.find('[')
+    end_idx = clean_json.rfind(']')
+    if start_idx != -1 and end_idx != -1 and end_idx > start_idx:
+        try:
+            parsed = json.loads(clean_json[start_idx:end_idx+1])
+            if isinstance(parsed, list) and len(parsed) > 0:
+                return parsed
+        except Exception:
+            pass
+
+    # Try extracting dict braces
+    start_idx = clean_json.find('{')
+    end_idx = clean_json.rfind('}')
+    if start_idx != -1 and end_idx != -1 and end_idx > start_idx:
+        try:
+            parsed = json.loads(clean_json[start_idx:end_idx+1])
+            if isinstance(parsed, dict):
+                for k in ["modules", "lessons", "data", "items", "results"]:
+                    if k in parsed and isinstance(parsed[k], list) and len(parsed[k]) > 0:
+                        return parsed[k]
+        except Exception:
+            pass
+
+    raise ValueError(f"Could not parse valid array from JSON response (length {len(clean_json)})")
+
+
 async def generate_curriculum_outline(target_lang: str, native_lang: str, db: asyncpg.Connection, user_id: Optional[int] = None):
     """
     Calls Gemini (prioritizing MODULE_GEN_KEY) to generate a personalized curriculum outline
@@ -119,51 +165,6 @@ async def generate_curriculum_outline(target_lang: str, native_lang: str, db: as
 
         Make sure there are exactly 11 modules in total (5 Beginner + 3 Intermediate + 3 Advanced) and exactly 10 lessons per module. Return only the raw JSON.
         """
-def _parse_flexible_json_array(raw: str) -> List[Dict[str, Any]]:
-    clean_json = raw.strip()
-    if "```json" in clean_json:
-        clean_json = clean_json.split("```json")[1].split("```")[0].strip()
-    elif "```" in clean_json:
-        clean_json = clean_json.split("```")[1].split("```")[0].strip()
-
-    # Try direct parse
-    try:
-        parsed = json.loads(clean_json)
-        if isinstance(parsed, list) and len(parsed) > 0:
-            return parsed
-        if isinstance(parsed, dict):
-            for k in ["modules", "lessons", "data", "items", "results"]:
-                if k in parsed and isinstance(parsed[k], list) and len(parsed[k]) > 0:
-                    return parsed[k]
-    except Exception:
-        pass
-
-    # Try extracting array brackets
-    start_idx = clean_json.find('[')
-    end_idx = clean_json.rfind(']')
-    if start_idx != -1 and end_idx != -1 and end_idx > start_idx:
-        try:
-            parsed = json.loads(clean_json[start_idx:end_idx+1])
-            if isinstance(parsed, list) and len(parsed) > 0:
-                return parsed
-        except Exception:
-            pass
-
-    # Try extracting dict braces
-    start_idx = clean_json.find('{')
-    end_idx = clean_json.rfind('}')
-    if start_idx != -1 and end_idx != -1 and end_idx > start_idx:
-        try:
-            parsed = json.loads(clean_json[start_idx:end_idx+1])
-            if isinstance(parsed, dict):
-                for k in ["modules", "lessons", "data", "items", "results"]:
-                    if k in parsed and isinstance(parsed[k], list) and len(parsed[k]) > 0:
-                        return parsed[k]
-        except Exception:
-            pass
-
-    raise ValueError(f"Could not parse valid array from JSON response (length {len(clean_json)})")
-
 
         try:
             res_text = await call_gemini_with_key_failover(
