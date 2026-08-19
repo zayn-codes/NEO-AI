@@ -119,29 +119,60 @@ async def generate_curriculum_outline(target_lang: str, native_lang: str, db: as
 
         Make sure there are exactly 11 modules in total (5 Beginner + 3 Intermediate + 3 Advanced) and exactly 10 lessons per module. Return only the raw JSON.
         """
-        def _validate_outline(raw: str):
-            clean_json = raw.strip()
-            if "```json" in clean_json:
-                clean_json = clean_json.split("```json")[1].split("```")[0].strip()
-            elif "```" in clean_json:
-                clean_json = clean_json.split("```")[1].split("```")[0].strip()
-            start_idx = clean_json.find('[')
-            end_idx = clean_json.rfind(']')
-            if start_idx != -1 and end_idx != -1:
-                clean_json = clean_json[start_idx:end_idx+1]
-            parsed = json.loads(clean_json)
-            if not isinstance(parsed, list) or len(parsed) == 0:
-                raise ValueError("Outline array is empty or not a list")
+def _parse_flexible_json_array(raw: str) -> List[Dict[str, Any]]:
+    clean_json = raw.strip()
+    if "```json" in clean_json:
+        clean_json = clean_json.split("```json")[1].split("```")[0].strip()
+    elif "```" in clean_json:
+        clean_json = clean_json.split("```")[1].split("```")[0].strip()
+
+    # Try direct parse
+    try:
+        parsed = json.loads(clean_json)
+        if isinstance(parsed, list) and len(parsed) > 0:
             return parsed
+        if isinstance(parsed, dict):
+            for k in ["modules", "lessons", "data", "items", "results"]:
+                if k in parsed and isinstance(parsed[k], list) and len(parsed[k]) > 0:
+                    return parsed[k]
+    except Exception:
+        pass
+
+    # Try extracting array brackets
+    start_idx = clean_json.find('[')
+    end_idx = clean_json.rfind(']')
+    if start_idx != -1 and end_idx != -1 and end_idx > start_idx:
+        try:
+            parsed = json.loads(clean_json[start_idx:end_idx+1])
+            if isinstance(parsed, list) and len(parsed) > 0:
+                return parsed
+        except Exception:
+            pass
+
+    # Try extracting dict braces
+    start_idx = clean_json.find('{')
+    end_idx = clean_json.rfind('}')
+    if start_idx != -1 and end_idx != -1 and end_idx > start_idx:
+        try:
+            parsed = json.loads(clean_json[start_idx:end_idx+1])
+            if isinstance(parsed, dict):
+                for k in ["modules", "lessons", "data", "items", "results"]:
+                    if k in parsed and isinstance(parsed[k], list) and len(parsed[k]) > 0:
+                        return parsed[k]
+        except Exception:
+            pass
+
+    raise ValueError(f"Could not parse valid array from JSON response (length {len(clean_json)})")
+
 
         try:
             res_text = await call_gemini_with_key_failover(
                 prompt,
                 for_module_gen=True,
                 timeout=25,
-                validator_fn=_validate_outline
+                validator_fn=_parse_flexible_json_array
             )
-            outline = _validate_outline(res_text)
+            outline = _parse_flexible_json_array(res_text)
             try:
                 with open(cache_path, "w", encoding="utf-8") as f:
                     json.dump(outline, f, ensure_ascii=False, indent=2)
@@ -152,31 +183,44 @@ async def generate_curriculum_outline(target_lang: str, native_lang: str, db: as
             print(f"[AI GENERATION ERROR] Outline generation failed after trying all models: {err}")
             outline = None
 
-
-
     if not outline:
-        # Local outline fallback generator (5 Beginner modules, 3 Intermediate, 3 Advanced)
-        outline = []
+        # Curated, pedagogical fallback curriculum outline with natural lesson titles
+        curated_module_lessons = {
+            1: ["Introduction to Vowels and Sounds", "Consonants and Basic Phonics", "Short Vowel Patterns (A, E, I, O, U)", "Consonant Blends (BL, CL, TR, ST)", "Silent Letters and Pronunciation Rules", "Digraphs (CH, SH, TH, WH)", "Long Vowels and Magic E", "Double Vowel Sounds (EE, OO, EA)", "Word Stress and Syllables", "Phonics Review and Pronunciation Mastery"],
+            2: ["Morning & Evening Daily Greetings", "Saying Please, Thank You & Politeness", "Numbers 1 to 20 & Simple Counting", "Colors and Visual Descriptions", "Common Household Objects", "Days of the Week & Daily Calendar", "Talking About Family Members", "Asking Simple Names & Introductions", "Everyday Food and Beverages", "Greetings & Vocabulary Mastery"],
+            3: ["Subject Pronouns (I, You, He, She, We)", "Singular and Plural Nouns", "The Verb 'To Be' (Am, Is, Are)", "Articles (A, An, The)", "Basic Action Verbs in Present Tense", "Possessive Adjectives (My, Your, His, Her)", "Simple Adjectives (Big, Small, Good, New)", "Using This, That, These, Those", "Forming Simple Questions (Who, What)", "Grammar & Sentence Foundation Review"],
+            4: ["Action Words in Daily Routine", "Expressing Likes, Dislikes & Preferences", "Asking For Help and Directions", "Shopping Phrases and Prices", "Telling Time and Schedules", "Ordering Food at a Restaurant", "Talking About the Weather", "Transportation and Travel Phrases", "Making Friendly Requests", "Everyday Conversational Expressions Review"],
+            5: ["Introducing Yourself to a New Friend", "Describing Your Daily Routine", "Asking About Hobbies and Free Time", "Visiting the Doctor and Explaining Health", "Making Weekend Plans with Friends", "Talking About Your Hometown and City", "Making a Telephone or Video Call", "Writing a Short Friendly Note", "Handling Small Problems Politely", "Beginner Conversational Fluency Milestone"],
+            6: ["Expanding Conversational Vocabulary", "Past Tense: Regular Verbs (-ed)", "Past Tense: Common Irregular Verbs", "Future Plans with 'Going To' and 'Will'", "Connecting Sentences (And, But, Because, So)", "Expressing Opinions and Agreement", "Describing People, Clothes and Personality", "Workplace and Career Vocabulary", "Narrating a Memorable Story", "Intermediate Vocabulary Mastery"],
+            7: ["Modal Verbs (Can, Could, Should, Must)", "Expressing Possibility (May, Might)", "Comparing Things (Comparative & Superlative)", "Giving Advice and Recommendations", "Making Polite Suggestions", "Expressing Conditions with 'If'", "Phrasal Verbs in Daily Conversations", "Using Adverbs of Frequency", "Expressing Emotions and Reactions", "Verbs and Structural Mastery"],
+            8: ["Present Perfect Tense Basics", "Since vs. For in Time Expressions", "Using 'Already', 'Yet', and 'Just'", "Passive Voice in Simple Sentences", "Relative Clauses (Who, Which, That)", "Reported Speech in Daily Talk", "Formal vs. Informal Language Styles", "Expressing Cause and Effect", "Debating Points of View", "Grammar & Complex Structure Milestone"],
+            9: ["Academic and Professional Vocabulary", "Idioms and Cultural Expressions", "Formal Email and Letter Composition", "Nuanced Adjectives for Abstract Concepts", "Expressing Uncertainty and Hypotheses", "Second and Third Conditionals", "Advanced Phrasal Verbs & Collocations", "Understanding Nuance and Tone", "Critical Thinking in Dialogue", "Advanced Vocabulary Mastery"],
+            10: ["Reading Short Articles and Essays", "Summarizing Main Ideas in Writing", "Writing an Opinion Paragraph", "Structuring an Argumentative Response", "Analyzing Tone and Perspective", "Writing Formal Requests & Inquiries", "Proofreading and Self-Correction Skills", "Writing Detailed Descriptions of Events", "Creative Writing and Story Crafting", "Reading and Writing Task Proficiency"],
+            11: ["Participating in Extended Discussions", "Giving a Structured Presentation", "Handling Unexpected Interview Questions", "Expressing Complex Arguments with Nuance", "Understanding Native Idiomatic Speech", "Humor, Sarcasm and Figurative Speech", "Persuasive Speaking Techniques", "Professional Meeting Communication", "Fluency, Confidence and Flow", "Advanced Language Mastery Graduation"]
+        }
+
         modules_data = [
-            ("Beginner", f"Alphabets & Sounds ({target_lang.upper()})", 1),
-            ("Beginner", f"Basic Words & Greetings ({target_lang.upper()})", 2),
-            ("Beginner", f"Simple Grammar & Nouns ({target_lang.upper()})", 3),
-            ("Beginner", f"Common Phrases & Verbs ({target_lang.upper()})", 4),
-            ("Beginner", f"Simple Sentences & Conversations ({target_lang.upper()})", 5),
-            ("Intermediate", f"Conversational Vocabulary ({target_lang.upper()})", 6),
-            ("Intermediate", f"Verbs and Action Words ({target_lang.upper()})", 7),
-            ("Intermediate", f"Grammar & Structure ({target_lang.upper()})", 8),
-            ("Advanced", f"Complex Vocabulary ({target_lang.upper()})", 9),
-            ("Advanced", f"Reading and Writing Tasks ({target_lang.upper()})", 10),
-            ("Advanced", f"Fluency & Conversation ({target_lang.upper()})", 11),
+            ("Beginner", "Alphabets & Sounds", 1),
+            ("Beginner", "Basic Words & Greetings", 2),
+            ("Beginner", "Simple Grammar & Nouns", 3),
+            ("Beginner", "Common Phrases & Verbs", 4),
+            ("Beginner", "Simple Sentences & Conversations", 5),
+            ("Intermediate", "Conversational Vocabulary", 6),
+            ("Intermediate", "Verbs and Action Words", 7),
+            ("Intermediate", "Grammar & Structure", 8),
+            ("Advanced", "Complex Vocabulary", 9),
+            ("Advanced", "Reading and Writing Tasks", 10),
+            ("Advanced", "Fluency & Conversation", 11),
         ]
+        outline = []
         for diff, category, seq in modules_data:
+            lesson_titles = curated_module_lessons.get(seq, [f"Lesson {i}: {category}" for i in range(1, 11)])
             lessons_list = []
-            for i in range(1, 11):
+            for i, l_title in enumerate(lesson_titles, 1):
                 clean_cat = "".join(x for x in category if x.isalnum()).lower()
                 lessons_list.append({
                     "title_key": f"lesson_{clean_cat}_{i}",
-                    "translated_title": f"Lesson {i}: {category}"
+                    "translated_title": l_title
                 })
             outline.append({
                 "difficulty_level": diff,
@@ -306,9 +350,9 @@ async def generate_module_lessons(curr_id: int, category: str, difficulty_level:
                 prompt,
                 for_module_gen=True,
                 timeout=25,
-                validator_fn=_validate_module_lessons
+                validator_fn=_parse_flexible_json_array
             )
-            lesson_contents = _validate_module_lessons(res_text)
+            lesson_contents = _parse_flexible_json_array(res_text)
             try:
                 with open(cache_path, "w", encoding="utf-8") as f:
                     json.dump(lesson_contents, f, ensure_ascii=False, indent=2)
@@ -323,12 +367,12 @@ async def generate_module_lessons(curr_id: int, category: str, difficulty_level:
     if not lesson_contents:
         # Fallback local content generation with dedicated writing exercises in every lesson
         lesson_contents = []
-        for l in lessons:
+        for idx_l, l in enumerate(lessons):
             tkey = l["title_key"]
-            nice_title = tkey.replace('lesson_', '').replace('_', ' ').capitalize()
+            clean_title = format_clean_human_title(None, tkey, category, idx_l)
             lesson_contents.append({
                 "title_key": tkey,
-                "translated_title": f"Lesson: {nice_title}",
+                "translated_title": clean_title,
                 "body_text": f"This lesson guides you through {category} in {target_lang.upper()}. Practice writing sentences, reading aloud, listening comprehension, and grammar.",
                 "exercise_data": [
                     {
@@ -390,8 +434,9 @@ async def generate_module_lessons(curr_id: int, category: str, difficulty_level:
                     item = candidate
 
         if not item:
+            fallback_name = format_clean_human_title(None, db_title_key, category, idx)
             item = {
-                "translated_title": f"Lesson: {db_title_key.replace('lesson_', '').replace('_', ' ').capitalize()}",
+                "translated_title": fallback_name,
                 "body_text": f"This lesson teaches basics about {category}. Practice writing, reading, and speaking target phrases.",
                 "exercise_data": [
                     {
@@ -433,7 +478,8 @@ async def generate_module_lessons(curr_id: int, category: str, difficulty_level:
                 ]
             }
 
-        translated_title = item.get("translated_title") or item.get("translatedTitle") or f"Lesson: {db_title_key.replace('lesson_', '').replace('_', ' ').capitalize()}"
+        raw_item_title = item.get("translated_title") or item.get("translatedTitle") or item.get("title")
+        translated_title = format_clean_human_title(raw_item_title, db_title_key, category, idx)
         body_text = item.get("body_text") or item.get("bodyText") or item.get("body") or f"Practicing lesson context for {category}."
         exercise_data = item.get("exercise_data") or item.get("exerciseData") or item.get("exercise") or [
             {
@@ -493,8 +539,13 @@ def format_clean_human_title(raw_title: Optional[str], db_title_key: str, catego
     if not raw_title:
         return f"Lesson {idx + 1}: {clean_cat}"
     t_lower = raw_title.lower()
-    if "complexvocabulary" in t_lower or "alphabetsounds" in t_lower or "lesson_" in t_lower or "lesson: complexvocabulary" in t_lower:
+    if any(k in t_lower for k in ["alphabetsounds", "alphabetssounds", "complexvocabulary", "basicwords", "simplegrammar", "commonphrases", "simplesentences", "lesson_"]):
         return f"Lesson {idx + 1}: {clean_cat}"
+    if raw_title.startswith("Lesson: "):
+        clean_inner = raw_title.replace("Lesson:", "").strip()
+        if any(k in clean_inner.lower() for k in ["alphabetssounds", "complexvocabulary", "alphabetsounds"]):
+            return f"Lesson {idx + 1}: {clean_cat}"
+        return f"Lesson {idx + 1}: {clean_inner}"
     return raw_title
 
 
@@ -599,35 +650,47 @@ async def get_curriculum(
             """,
             curr_id
         )
+        ugly_check = await db.fetchval(
+            """
+            SELECT COUNT(*)
+            FROM lesson_content lc
+            INNER JOIN lessons l ON lc.lesson_id = l.lesson_id
+            WHERE l.curriculum_id = $1 AND (
+                lc.translated_title ILIKE '%alphabetssounds%' OR
+                lc.translated_title ILIKE '%complexvocabulary%' OR
+                lc.translated_title ILIKE '%lesson_%'
+            );
+            """,
+            curr_id
+        )
         if force_regenerate and should_generate_ai:
             print(f"[FORCE REGENERATE] Re-generating AI lesson details for module: '{c_row['category']}'...")
             await generate_module_lessons(curr_id, c_row["category"], c_row["difficulty_level"], target_lang_code, native_lang_code, db, user_id=user_id)
+        elif (empty_check > 0 or ugly_check > 0) and should_generate_ai:
+            print(f"[AI GENERATE] Generating full AI lesson details for {diff_level} module: '{c_row['category']}' (ID: {curr_id}, user_id: {user_id})...")
+            await generate_module_lessons(curr_id, c_row["category"], c_row["difficulty_level"], target_lang_code, native_lang_code, db, user_id=user_id)
         elif empty_check > 0:
-            if should_generate_ai:
-                print(f"[STAGED GEN] Generating full AI lesson details for {diff_level} module: '{c_row['category']}' (ID: {curr_id}, user_id: {user_id})...")
-                await generate_module_lessons(curr_id, c_row["category"], c_row["difficulty_level"], target_lang_code, native_lang_code, db, user_id=user_id)
-            else:
-                # Fast placeholder initialization without consuming AI API rate limits
-                print(f"[STAGED GEN SKIP] Deferring AI generation for non-active track module: '{c_row['category']}' ({diff_level}).")
-                lessons_to_init = await db.fetch("SELECT lesson_id, title_key FROM lessons WHERE curriculum_id = $1;", curr_id)
-                for idx_init, l_item in enumerate(lessons_to_init):
-                    t_title = format_clean_human_title(None, l_item['title_key'], c_row['category'], idx_init)
-                    b_text = f"This lesson covers {diff_level} concepts for {c_row['category']}. Select this track to generate full AI exercises."
-                    init_ex = [
-                        {"type": "read", "instruction": f"Read aloud ({target_lang_code.upper()}):", "text": f"Learning {c_row['category']} step by step.", "answer": f"Learning {c_row['category']} step by step."},
-                        {"type": "quiz", "instruction": "Select the correct option:", "question": f"What level is this module?", "options": [diff_level, "Beginner", "Intermediate", "Advanced"], "answer": diff_level},
-                        {"type": "pictorial", "instruction": "Identify object:", "question": "What is this? 📖", "options": ["Book", "Pen", "Desk", "Phone"], "answer": "Book"},
-                        {"type": "read", "instruction": "Practice phrase:", "text": f"I am mastering {c_row['category']}.", "answer": f"I am mastering {c_row['category']}."},
-                        {"type": "quiz", "instruction": "Check comprehension:", "question": f"Key focus of {c_row['category']}?", "options": ["Language skills", "Math", "Science", "History"], "answer": "Language skills"}
-                    ]
-                    await db.execute(
-                        """
-                        UPDATE lesson_content
-                        SET translated_title = $1, body_text = $2, exercise_data = $3
-                        WHERE lesson_id = $4 AND language_code = $5 AND (body_text IS NULL OR body_text = '');
-                        """,
-                        t_title, b_text, json.dumps(init_ex), l_item["lesson_id"], native_lang_code
-                    )
+            # Fast placeholder initialization without consuming AI API rate limits
+            print(f"[STAGED GEN SKIP] Deferring AI generation for non-active track module: '{c_row['category']}' ({diff_level}).")
+            lessons_to_init = await db.fetch("SELECT lesson_id, title_key FROM lessons WHERE curriculum_id = $1;", curr_id)
+            for idx_init, l_item in enumerate(lessons_to_init):
+                t_title = format_clean_human_title(None, l_item['title_key'], c_row['category'], idx_init)
+                b_text = f"This lesson covers {diff_level} concepts for {c_row['category']}. Select this track to generate full AI exercises."
+                init_ex = [
+                    {"type": "read", "instruction": f"Read aloud ({target_lang_code.upper()}):", "text": f"Learning {c_row['category']} step by step.", "answer": f"Learning {c_row['category']} step by step."},
+                    {"type": "quiz", "instruction": "Select the correct option:", "question": f"What level is this module?", "options": [diff_level, "Beginner", "Intermediate", "Advanced"], "answer": diff_level},
+                    {"type": "pictorial", "instruction": "Identify object:", "question": "What is this? 📖", "options": ["Book", "Pen", "Desk", "Phone"], "answer": "Book"},
+                    {"type": "read", "instruction": "Practice phrase:", "text": f"I am mastering {c_row['category']}.", "answer": f"I am mastering {c_row['category']}."},
+                    {"type": "quiz", "instruction": "Check comprehension:", "question": f"Key focus of {c_row['category']}?", "options": ["Language skills", "Math", "Science", "History"], "answer": "Language skills"}
+                ]
+                await db.execute(
+                    """
+                    UPDATE lesson_content
+                    SET translated_title = $1, body_text = $2, exercise_data = $3
+                    WHERE lesson_id = $4 AND language_code = $5 AND (body_text IS NULL OR body_text = '');
+                    """,
+                    t_title, b_text, json.dumps(init_ex), l_item["lesson_id"], native_lang_code
+                )
 
     # 5. Fetch complete curriculum with lessons and populated content
     curr_ids = [c["curriculum_id"] for c in curriculum_rows]

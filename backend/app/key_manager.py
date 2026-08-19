@@ -169,69 +169,101 @@ async def call_gemini_with_key_failover(
     if not api_keys:
         raise RuntimeError("No Gemini API keys configured.")
 
-    payload = {
-        "contents": [{"parts": [{"text": prompt}]}],
-        "generationConfig": {"responseMimeType": "application/json"}
-    }
-    encoded_payload = json.dumps(payload).encode("utf-8")
-
+    # Try up to 2 complete passes across all models and keys
+    max_passes = 2
     last_exception = None
     attempt_count = 0
 
-    # Iterate through models: if one model fails, switch to another until achieved
-    for m_idx, model in enumerate(models):
-        next_model = models[m_idx + 1] if m_idx + 1 < len(models) else "local fallback"
+    for pass_num in range(1, max_passes + 1):
+        if pass_num > 1:
+            print(f"[MODEL FAILOVER] Pass {pass_num - 1} finished. Resetting key cooldowns and retrying all verified models...")
+            key_manager._exhausted_keys.clear()
+            api_keys = key_manager.get_keys(
+                for_module_gen=for_module_gen,
+                for_study_guide=for_study_guide,
+                for_voice_assistant=for_voice_assistant
+            )
+            await asyncio.sleep(1.0)
 
-        for k_idx, api_key in enumerate(api_keys):
-            masked = f"...{api_key[-6:]}" if len(api_key) >= 6 else api_key
-            attempt_count += 1
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
+        for m_idx, model in enumerate(models):
+            next_model = models[m_idx + 1] if m_idx + 1 < len(models) else "next key / pass"
 
-            def _http_post():
-                req = urllib.request.Request(
-                    url,
-                    data=encoded_payload,
-                    headers={"Content-Type": "application/json"},
-                    method="POST"
-                )
-                with urllib.request.urlopen(req, timeout=timeout) as resp:
-                    return resp.read().decode("utf-8")
+            for k_idx, api_key in enumerate(api_keys):
+                masked = f"...{api_key[-6:]}" if len(api_key) >= 6 else api_key
+                attempt_count += 1
+                url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
 
-            try:
-                response_text = await asyncio.to_thread(_http_post)
-                data = json.loads(response_text)
-                inner_text = data["candidates"][0]["content"]["parts"][0]["text"].strip()
+                # Try with JSON mimeType first, fallback to standard text payload
+                for payload_mode in ["json_mime", "text_plain"]:
+                    if payload_mode == "json_mime":
+                        payload = {
+                            "contents": [{"parts": [{"text": prompt}]}],
+                            "generationConfig": {"responseMimeType": "application/json"}
+                        }
+                    else:
+                        payload = {
+                            "contents": [{"parts": [{"text": prompt}]}]
+                        }
+                    encoded_payload = json.dumps(payload).encode("utf-8")
 
-                if inner_text.startswith("```json"):
-                    inner_text = inner_text[7:]
-                elif inner_text.startswith("```"):
-                    inner_text = inner_text[3:]
-                if inner_text.endswith("```"):
-                    inner_text = inner_text[:-3]
-                inner_text = inner_text.strip()
+                    def _http_post():
+                        req = urllib.request.Request(
+                            url,
+                            data=encoded_payload,
+                            headers={"Content-Type": "application/json"},
+                            method="POST"
+                        )
+                        with urllib.request.urlopen(req, timeout=timeout) as resp:
+                            return resp.read().decode("utf-8")
 
-                if not inner_text or len(inner_text) < 10:
-                    raise ValueError(f"Model '{model}' returned empty or truncated response")
-
-                # If custom validator provided, ensure output fulfills all requirements
-                if validator_fn is not None:
                     try:
-                        validated_result = validator_fn(inner_text)
-                        if validated_result is False:
-                            raise ValueError(f"Model '{model}' output failed semantic validation requirements")
-                    except Exception as val_err:
-                        raise ValueError(f"Model '{model}' output failed validation: {val_err}")
+                        response_text = await asyncio.to_thread(_http_post)
+                        data = json.loads(response_text)
+                        
+                        candidates = data.get("candidates", [])
+                        if not candidates:
+                            raise ValueError(f"No candidates returned by model '{model}'")
+                            
+                        parts = candidates[0].get("content", {}).get("parts", [])
+                        if not parts:
+                            raise ValueError(f"No content parts returned by model '{model}'")
+                            
+                        inner_text = parts[0].get("text", "").strip()
 
-                print(f"[MODEL SUCCESS] Generation achieved using model '{model}' with key {masked} on attempt #{attempt_count}!")
-                return inner_text
+                        if inner_text.startswith("```json"):
+                            inner_text = inner_text[7:]
+                        elif inner_text.startswith("```"):
+                            inner_text = inner_text[3:]
+                        if inner_text.endswith("```"):
+                            inner_text = inner_text[:-3]
+                        inner_text = inner_text.strip()
 
-            except Exception as e:
-                last_exception = e
-                err_msg = str(e)
-                if key_manager.is_rate_limit_error(e):
-                    key_manager.mark_key_exhausted(api_key, f"Rate limit on model {model}")
-                    print(f"[MODEL FAILOVER] Rate limit for model '{model}' on key {masked}. Switching to next key/model...")
-                else:
-                    print(f"[MODEL FAILOVER] Model '{model}' failed on key {masked} ({err_msg[:90]}...). Switching to next model '{next_model}'...")
+                        if not inner_text or len(inner_text) < 10:
+                            raise ValueError(f"Model '{model}' returned empty or truncated response")
 
-    raise RuntimeError(f"All {len(models)} models and keys exhausted for generation: {last_exception}")
+                        # If custom validator provided, ensure output fulfills all requirements
+                        if validator_fn is not None:
+                            try:
+                                validated_result = validator_fn(inner_text)
+                                if validated_result is False:
+                                    raise ValueError(f"Model '{model}' output failed semantic validation requirements")
+                            except Exception as val_err:
+                                raise ValueError(f"Model '{model}' output failed validation: {val_err}")
+
+                        print(f"[MODEL SUCCESS] Generation achieved using model '{model}' with key {masked} on attempt #{attempt_count}!")
+                        return inner_text
+
+                    except Exception as e:
+                        last_exception = e
+                        err_msg = str(e)
+                        if key_manager.is_rate_limit_error(e):
+                            key_manager.mark_key_exhausted(api_key, f"Rate limit on model {model}")
+                            print(f"[MODEL FAILOVER] Rate limit for model '{model}' on key {masked}. Switching to next key/model...")
+                            break  # Move to next key immediately on 429
+                        else:
+                            # If json_mime failed, try text_plain before switching models
+                            if payload_mode == "json_mime":
+                                continue
+                            print(f"[MODEL FAILOVER] Model '{model}' failed on key {masked} ({err_msg[:90]}...). Switching to next model '{next_model}'...")
+
+    raise RuntimeError(f"All {len(models)} models and keys exhausted after {attempt_count} attempts: {last_exception}")
